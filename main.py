@@ -5,7 +5,7 @@ from cv.preprocessing import preprocess_image
 from cv.detect_board import find_sudoku_contour
 
 image, thresh, gray, blur = preprocess_image(
-    "test_images/sample5.png"
+    "test_images/sample15.png"
 )
 
 corners = find_sudoku_contour(thresh)
@@ -63,7 +63,7 @@ from segmentation.crop_cells import (clean_cell)
 
 os.makedirs("outputs/cleaned_cells", exist_ok=True)
 cell = cv2.imread("outputs/cells/cell_0_1.jpg")
-cell = cells[0][3] # ganti disini buat cek cell lain
+cell = cells[0][2] # ganti disini buat cek cell lain
 cleaned = clean_cell(cell)
 cv2.imwrite("output/cleaned_cells/cleaned_0_1.jpg", cleaned)
 cv2.imshow("Original Cell", cell)
