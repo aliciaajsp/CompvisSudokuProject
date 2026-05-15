@@ -1,10 +1,11 @@
 import cv2
+import os
 
 from cv.preprocessing import preprocess_image
 from cv.detect_board import find_sudoku_contour
 
 image, thresh = preprocess_image(
-    "test_images/sample12.png"
+    "test_images/sample7.png"
 )
 
 corners = find_sudoku_contour(thresh)
