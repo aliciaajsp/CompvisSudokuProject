@@ -1,6 +1,5 @@
 import cv2
 
-
 def find_sudoku_contour(thresh):
 
     contours, _ = cv2.findContours(
@@ -9,25 +8,31 @@ def find_sudoku_contour(thresh):
         cv2.CHAIN_APPROX_SIMPLE
     )
 
-    largest_contour = None
-    max_area = 0
+    contours = sorted(
+        contours,
+        key=cv2.contourArea,
+        reverse=True
+    )
 
     for contour in contours:
 
         area = cv2.contourArea(contour)
 
-        if area > 1000 and area > max_area:
+        if area < 5000:
+            continue
 
-            peri = cv2.arcLength(contour, True)
+        perimeter = cv2.arcLength(
+            contour,
+            True
+        )
 
-            approx = cv2.approxPolyDP(
-                contour,
-                0.04 * peri,
-                True
-            )
+        approx = cv2.approxPolyDP(
+            contour,
+            0.04 * perimeter,
+            True
+        )
 
-            if len(approx) == 4:
-                largest_contour = approx
-                max_area = area
+        if len(approx) == 4:
+            return approx
 
-    return largest_contour
+    return None

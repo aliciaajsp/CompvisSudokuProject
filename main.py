@@ -1,11 +1,10 @@
 import cv2
-import os
 
 from cv.preprocessing import preprocess_image
 from cv.detect_board import find_sudoku_contour
 
-image, thresh, gray, blur = preprocess_image(
-    "test_images/sample15.png"
+image, thresh = preprocess_image(
+    "test_images/sample12.png"
 )
 
 corners = find_sudoku_contour(thresh)
@@ -21,6 +20,7 @@ if corners is not None:
     )
 
     for point in corners:
+
         x, y = point[0]
 
         cv2.circle(
