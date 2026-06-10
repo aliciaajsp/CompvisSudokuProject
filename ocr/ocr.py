@@ -3,7 +3,6 @@ import numpy as np
 from pathlib import Path
 import torch
 import torch.nn as nn
-import matplotlib.pyplot as plt
 
 # model definition
 class DigitCNN(nn.Module):
@@ -87,40 +86,12 @@ def load_digit_model(model_path=DEFAULT_MODEL_PATH, constants_path=DEFAULT_CONST
     return model
 
 # image utilities
-def center_digit(img):
-    coords = cv2.findNonZero(img)
-    if coords is None:
-        return img
-    x, y, w, h = cv2.boundingRect(coords)
-    digit_roi = img[y:y+h, x:x+w]
-
-    if h / w > 2.0:
-        pad = int(h * 0.2)
-        temp_canvas = np.zeros((h, w + 2 * pad), dtype=np.uint8)
-        temp_canvas[:, pad:pad+w] = digit_roi
-        digit_roi = temp_canvas
-        w = digit_roi.shape[1]
-
-    scale = 20.0 / max(w, h)
-    new_w = max(1, int(w * scale))
-    new_h = max(1, int(h * scale))
-    digit_roi = cv2.resize(digit_roi, (new_w, new_h), interpolation=cv2.INTER_AREA)
-
-    canvas = np.zeros((28, 28), dtype=np.uint8)
-    top = (28 - new_h) // 2
-    left = (28 - new_w) // 2
-    canvas[top:top+new_h, left:left+new_w] = digit_roi
-    return canvas
-
 def enhance_for_blur(img):
-    h, w = img.shape
-    img_up = cv2.resize(img, (w * 2, h * 2), interpolation=cv2.INTER_CUBIC)
-    gaussian = cv2.GaussianBlur(img_up, (0, 0), sigmaX=3)
-    sharpened = cv2.addWeighted(img_up, 1.5, gaussian, -0.5, 0)
+    gaussian = cv2.GaussianBlur(img, (0, 0), sigmaX=3)
+    sharpened = cv2.addWeighted(img, 1.5, gaussian, -0.5, 0)
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(sharpened)
-    denoised = cv2.fastNlMeansDenoising(enhanced, h=7, templateWindowSize=7, searchWindowSize=21)
-    return cv2.resize(denoised, (w, h), interpolation=cv2.INTER_AREA)
+    return cv2.fastNlMeansDenoising(enhanced, h=7, templateWindowSize=7, searchWindowSize=21)
 
 def order_pts(pts):
     pts = pts.reshape(4, 2).astype("float32")
@@ -146,7 +117,7 @@ def validate_sudoku_cell(board, row, col, val):
     return True
 
 # ocr pipeline
-def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path=DEFAULT_CONSTANTS_PATH):
+def main(image_path="sudoku.png", model_path=DEFAULT_MODEL_PATH, constants_path=DEFAULT_CONSTANTS_PATH):
     global model
     if model is None:
         load_digit_model(model_path, constants_path)
@@ -171,7 +142,6 @@ def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path
 
     # grid detection
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     def is_square_like(contour, tolerance=0.3):
         x, y, w, h = cv2.boundingRect(contour)
         if h == 0: return False
@@ -207,14 +177,13 @@ def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path
 
             quick = cv2.resize(cell, (28, 28), interpolation=cv2.INTER_AREA)
             pixel_density = np.sum(quick > 127) / (28 * 28)
-            if pixel_density < 0.05:
+            if pixel_density < 0.075:
                 is_blank[row][col] = True
                 continue
 
             kernel = np.ones((2, 2), np.uint8)
             cell = cv2.morphologyEx(cell, cv2.MORPH_CLOSE, kernel)
             cell_resized = cv2.resize(cell, (28, 28), interpolation=cv2.INTER_AREA)
-            cell_resized = center_digit(cell_resized)
 
             inp = cell_resized.astype("float32") / 255.0
             inp = (inp - COMBINED_MEAN) / (COMBINED_STD + 1e-7)
@@ -241,17 +210,13 @@ def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path
             second_best[row][col] = second_digit
 
     # correction & validation
-    # FIX: snapshot raw predictions, then process high-confidence cells first
     raw_board = [row[:] for row in board]
-
     cells_by_conf = sorted(
         [(row, col) for row in range(9) for col in range(9) if not is_blank[row][col]],
         key=lambda rc: conf_map[rc[0]][rc[1]],
         reverse=True
     )
-
     board = [[0]*9 for _ in range(9)]
-
     for row, col in cells_by_conf:
         current_val = raw_board[row][col]
 
@@ -259,15 +224,11 @@ def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path
             board[row][col] = current_val
         else:
             alt_val = second_best[row][col]
-            if current_val == 7 and alt_val != 1: alt_val = 1
-            elif current_val == 1 and alt_val != 7: alt_val = 7
-
             if validate_sudoku_cell(board, row, col, alt_val) and alt_val != 0:
                 board[row][col] = alt_val
             else:
                 board[row][col] = 0
                 is_blank[row][col] = True
-
     # matrix output
     for i in range(9):
         comma = "," if i < 8 else ""
@@ -275,4 +236,4 @@ def main(image_path="sudoku3.png", model_path=DEFAULT_MODEL_PATH, constants_path
     return board
 
 if __name__ == "__main__":
-    main(image_path="sudoku.png")
+    main(image_path="sudoku7.png")
