@@ -1,0 +1,23 @@
+name: Sync to Hugging Face Hub
+
+# Kapan aksi ini dijalankan?
+on:
+  push:
+    branches: [main] # Jalan otomatis tiap ada push ke branch main
+  workflow_dispatch: # Menambahkan tombol play manual jika dibutuhkan
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Ambil seluruh riwayat kode
+          lfs: true # Wajib diaktifkan jika kalian punya file model/dataset besar
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git push --force https://asipnana:$HF_TOKEN@huggingface.co/spaces/asipnana/SudokuProject main
