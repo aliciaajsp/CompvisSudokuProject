@@ -177,7 +177,7 @@ def main(image_path="sudoku.png", model_path=DEFAULT_MODEL_PATH, constants_path=
 
             quick = cv2.resize(cell, (28, 28), interpolation=cv2.INTER_AREA)
             pixel_density = np.sum(quick > 127) / (28 * 28)
-            if pixel_density < 0.075:
+            if pixel_density < 0.1:
                 is_blank[row][col] = True
                 continue
 
